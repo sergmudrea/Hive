@@ -1,0 +1,345 @@
+{
+  "hive_config.json": {
+    "project": "HiveMind Swarm v1.0",
+    "last_updated": "2026-05-13",
+    "architects": ["Kronos", "Master"],
+    "company": "Moldovan Cybersecurity Research & Penetration Testing SRL",
+
+    "encryption": {
+      "algorithm": "AES-256-GCM",
+      "key_derivation": "SHA-256",
+      "key_env_var": "HIVE_ENCRYPTION_KEY",
+      "note": "Генерировать через: openssl rand -base64 32"
+    },
+
+    "swarm": {
+      "swarm_id": "SWARM-XXXXXXXX",
+      "swarm_id_env_var": "HIVE_SWARM_ID",
+      "max_concurrent_tasks": 10,
+      "task_timeout_seconds": 1800,
+      "max_retries": 3,
+      "check_interval_seconds": 120,
+      "max_runtime_seconds": 86400
+    },
+
+    "infrastructure": {
+      "servers": {
+        "hivemind_core": {
+          "hostname": "hive-core",
+          "ip": "10.0.0.1",
+          "os": "Ubuntu 22.04 LTS",
+          "cpu": "8 cores",
+          "ram": "16 GB",
+          "disk": "100 GB NVMe",
+          "gpu": "none",
+          "provider": "AlexHost / PQ.Hosting",
+          "payment": "BTC/XMR",
+          "monthly_cost_eur": 30,
+          "services": ["HiveMind Core", "Dead Drop Server", "SSH Queen API"]
+        },
+        "brain_server_1": {
+          "hostname": "brain-1",
+          "ip": "10.0.0.2",
+          "os": "Ubuntu 22.04 LTS",
+          "cpu": "16 cores",
+          "ram": "64 GB",
+          "disk": "500 GB NVMe",
+          "gpu": "1x RTX 4090",
+          "provider": "AlexHost / Flokinet",
+          "payment": "BTC/XMR",
+          "monthly_cost_eur": 150,
+          "models": ["deepseek-r1:70b", "command-r-plus:latest"],
+          "ollama_port": 11434
+        },
+        "brain_server_2": {
+          "hostname": "brain-2",
+          "ip": "10.0.0.3",
+          "os": "Ubuntu 22.04 LTS",
+          "cpu": "16 cores",
+          "ram": "64 GB",
+          "disk": "500 GB NVMe",
+          "gpu": "1x RTX 4090",
+          "provider": "AlexHost / Flokinet",
+          "payment": "BTC/XMR",
+          "monthly_cost_eur": 150,
+          "models": ["qwen2.5:72b", "mistral-large:latest"],
+          "ollama_port": 11434
+        },
+        "brain_server_3": {
+          "hostname": "brain-3",
+          "ip": "10.0.0.4",
+          "os": "Ubuntu 22.04 LTS",
+          "cpu": "16 cores",
+          "ram": "64 GB",
+          "disk": "500 GB NVMe",
+          "gpu": "1x RTX 4090",
+          "provider": "Flokinet",
+          "payment": "BTC/XMR",
+          "monthly_cost_eur": 150,
+          "models": ["llama4:behemoth"],
+          "ollama_port": 11434
+        }
+      },
+      "total_monthly_cost_eur": 480,
+      "provisioning_time_hours": 24
+    },
+
+    "brain_units": {
+      "recon": {
+        "name": "Brain-1 RECON",
+        "model": "deepseek-r1:70b",
+        "endpoint": "http://10.0.0.2:11434/api/generate",
+        "role": "OSINT, разведка, subdomain enumeration, сбор технологического стека"
+      },
+      "exploit": {
+        "name": "Brain-2 EXPLOIT",
+        "model": "qwen2.5:72b-uncensored",
+        "endpoint": "http://10.0.0.3:11435/api/generate",
+        "role": "Генерация эксплойтов, PoC, shellcode, обход AV"
+      },
+      "social": {
+        "name": "Brain-3 SOCIAL",
+        "model": "mistral-large:latest",
+        "endpoint": "http://10.0.0.3:11436/api/generate",
+        "role": "Социальная инженерия, фишинг, легендирование"
+      },
+      "pivot": {
+        "name": "Brain-4 PIVOT",
+        "model": "llama4:behemoth",
+        "endpoint": "http://10.0.0.4:11437/api/generate",
+        "role": "Lateral movement, privilege escalation, карта сети"
+      },
+      "report": {
+        "name": "Brain-5 REPORT",
+        "model": "command-r-plus:latest",
+        "endpoint": "http://10.0.0.2:11438/api/generate",
+        "role": "Документирование, отчеты для клиентов"
+      },
+      "tool_runner": {
+        "name": "Brain-6 TOOL RUNNER",
+        "model": "hexstrike-ai + Claude",
+        "endpoint": "http://10.0.0.5:8888",
+        "role": "Исполнение инструментов (Nmap, Nuclei, SQLMap через HexStrike MCP)",
+        "optional": true
+      }
+    },
+
+    "dead_drops": {
+      "github": {
+        "enabled": true,
+        "accounts": ["dd_account_1", "dd_account_2", "dd_account_3"],
+        "rotation_days": 7,
+        "api_base": "https://api.github.com"
+      },
+      "dns": {
+        "enabled": true,
+        "provider": "cloudflare",
+        "domains": ["redteam-dns1.com", "redteam-dns2.com"],
+        "ttl": 60
+      },
+      "telegram": {
+        "enabled": true,
+        "bots": ["bot_token_1", "bot_token_2"],
+        "chat_ids": ["chat_id_1", "chat_id_2"],
+        "note": "Боты создаются через одноразовые номера SMS-activate"
+      },
+      "dead_drop_server_port": 9999,
+      "sync_interval_seconds": 60
+    },
+
+    "queen_api": {
+      "protocol": "SSH",
+      "host": "127.0.0.1",
+      "port": 2222,
+      "auth_method": "ssh_key_ed25519",
+      "ssh_key_path": "./hive_ssh_key",
+      "environment": "HIVE_QUEEN_PASSWORD"
+    },
+
+    "worker_bees": {
+      "execution": "in-memory only",
+      "languages": ["python3", "powershell", "csharp"],
+      "supported_os": ["windows", "linux", "macos"],
+      "masking": {
+        "windows": "svchost.exe",
+        "linux": "kworker/0:1",
+        "macos": "kernel_task"
+      },
+      "max_payload_size_mb": 10,
+      "sandbox_detection": true,
+      "self_destruct_on_detect": true
+    },
+
+    "network": {
+      "proxy_chain": "HiveMind -> VPN Gateway 1 -> VPN Gateway 2 -> Tor -> Dead Drop",
+      "vpn_providers": ["Mullvad", "ProtonVPN"],
+      "tor_socks5": "127.0.0.1:9050",
+      "ip_rotation_minutes": 10,
+      "dns_over_https": "https://cloudflare-dns.com/dns-query"
+    },
+
+    "legal_cover": {
+      "company_name": "Cybersecurity Research & Penetration Testing SRL",
+      "jurisdiction": "Moldova",
+      "registration_number": "TBD",
+      "bank": "MAIB / Victoriabank",
+      "currency": "MDL / EUR",
+      "services": [
+        "Penetration Testing",
+        "Vulnerability Assessment",
+        "Red Team Exercises",
+        "Security Research"
+      ],
+      "contract_template": "./templates/contract_moldova.docx",
+      "nda_template": "./templates/nda_moldova.docx"
+    },
+
+    "databases": {
+      "honeycomb": {
+        "path": "./honeycomb/",
+        "encryption": "LUKS",
+        "retention_days": 90
+      },
+      "dead_drops_db": {
+        "path": "./dead_drops.db",
+        "type": "SQLite",
+        "encryption": "SQLCipher"
+      }
+    },
+
+    "self_destruct": {
+      "triggers": [
+        "Обнаружение подозрительной активности на сервере",
+        "Попытка физического доступа",
+        "Приказ Queen (команда self_destruct)",
+        "Отсутствие маячка более 24 часов"
+      ],
+      "procedure": [
+        "Сигнал всем пчелам на самоликвидацию",
+        "Шифрование и удаление Honeycomb",
+        "Стирание ключей шифрования из памяти",
+        "Форматирование дисков (shred + urandom)",
+        "Отправка последнего сигнала 'swarm_dispersed'"
+      ]
+    },
+
+    "deployment": {
+      "phase_0_preparation": {
+        "duration": "1-2 weeks",
+        "tasks": [
+          "Написание кода HiveMind Core (hivemind.go)",
+          "Написание кода Worker Bee (workerbee.py)",
+          "Написание кода Dead Drop Server (dead_drop_server.py)",
+          "Регистрация Молдавского ООО",
+          "Создание GitHub аккаунтов для Dead Drops",
+          "Покупка доменов для DNS Dead Drops",
+          "Создание Telegram ботов",
+          "Аренда серверов под LLM ферму",
+          "Установка Ollama и загрузка моделей",
+          "Тестирование на полигоне 'Эребус Лайт'"
+        ]
+      },
+      "phase_1_24h_deploy": {
+        "hour_0": "Подтверждение оплаты от клиента",
+        "hour_1": "Аренда сервера под HiveMind (если нужно)",
+        "hour_2": "Развертывание HiveMind Core из готового образа",
+        "hour_3": "Подключение LLM-юнитов к HiveMind",
+        "hour_4": "Калибровка роя (тестовые задачи)",
+        "hour_5": "Генерация уникальной пчелы под клиента",
+        "hour_6": "Отправка пчелы клиенту",
+        "hour_7": "Первый контакт пчелы с Dead Drop",
+        "hour_8": "Начало разведки",
+        "hour_24": "Первый отчет готов"
+      }
+    },
+
+    "templates": {
+      "bee_deploy_config": {
+        "encryption_key": "GENERATE_NEW_FOR_EACH_CLIENT",
+        "swarm_id": "SWARM_ID",
+        "dead_drops": [
+          {
+            "type": "github",
+            "token": "GITHUB_TOKEN",
+            "gist_id": "GIST_ID"
+          },
+          {
+            "type": "dns",
+            "domain": "redteam-dns.com"
+          },
+          {
+            "type": "telegram",
+            "bot_key": "BOT_TOKEN",
+            "chat_id": "CHAT_ID"
+          }
+        ],
+        "check_interval": 120,
+        "max_runtime": 86400
+      }
+    },
+
+    "environment_variables": {
+      "required": [
+        "HIVE_ENCRYPTION_KEY",
+        "HIVE_SWARM_ID",
+        "HIVE_GITHUB_TOKENS",
+        "HIVE_DNS_DOMAIN",
+        "HIVE_TELEGRAM_BOT_KEY",
+        "HIVE_TELEGRAM_CHAT_ID",
+        "HIVE_QUEEN_PASSWORD",
+        "HIVE_SOCKS5_PROXY"
+      ],
+      "optional": [
+        "HIVE_BRAIN_RECON",
+        "HIVE_BRAIN_EXPLOIT",
+        "HIVE_BRAIN_SOCIAL",
+        "HIVE_BRAIN_PIVOT",
+        "HIVE_BRAIN_REPORT",
+        "DD_ENCRYPTION_KEY",
+        "DD_SWARM_ID",
+        "DD_GITHUB_TOKEN",
+        "DD_DB_PATH",
+        "DD_CONFIG_PATH",
+        "DD_SYNC_INTERVAL"
+      ]
+    },
+
+    "files_manifest": {
+      "hivemind_core": {
+        "filename": "hivemind.go",
+        "language": "Go",
+        "lines": 800,
+        "description": "Оркестратор роя: Dead Drop вотчеры, диспетчер Brain Units, Queen SSH API"
+      },
+      "worker_bee": {
+        "filename": "workerbee.py",
+        "language": "Python",
+        "lines": 508,
+        "description": "In-memory агент: Dead Drop клиенты, сбор системы, маскировка, самоликвидация"
+      },
+      "dead_drop_server": {
+        "filename": "dead_drop_server.py",
+        "language": "Python",
+        "lines": 478,
+        "description": "Управление Dead Drops: GitHub Gist, DNS TXT, Telegram боты, ротация аккаунтов"
+      },
+      "hive_config": {
+        "filename": "hive_config.json",
+        "language": "JSON",
+        "lines": "this file",
+        "description": "Полная конфигурация HiveMind Swarm для развертывания"
+      }
+    },
+
+    "next_steps": [
+      "1. Подтвердить архитектуру и конфигурацию",
+      "2. Зарегистрировать Молдавское ООО",
+      "3. Создать теневые аккаунты (GitHub, Telegram, DNS)",
+      "4. Арендовать серверы после появления бюджета",
+      "5. Развернуть LLM ферму с Ollama",
+      "6. Скомпилировать и запустить HiveMind Core",
+      "7. Провести тестовый прогон на полигоне",
+      "8. Первый боевой контракт"
+    ]
+  }
+}
