@@ -1,0 +1,319 @@
+# ============================================================================
+# HIVEMIND SWARM — DOCKER COMPOSE
+# Тестовое окружение для локальной разработки и отладки
+# Архитектор: Кронос | Тимлид: Мастер
+#
+# Использование:
+#   docker compose up -d           — запустить всё
+#   docker compose logs -f         — смотреть логи
+#   docker compose down            — остановить
+#   docker compose run test-runner — запустить тесты
+# ============================================================================
+
+version: '3.8'
+
+services:
+  # =========================================================================
+  # HIVEMIND CORE — Оркестратор роя
+  # =========================================================================
+  hivemind:
+    build:
+      context: .
+      dockerfile: Dockerfile.hivemind
+    container_name: hivemind-core
+    hostname: hivemind
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:2222:2222"  # Queen SSH API (только localhost)
+    environment:
+      - HIVE_ENCRYPTION_KEY=${HIVE_ENCRYPTION_KEY:-changeme_change_me_32_bytes_key}
+      - HIVE_SWARM_ID=${HIVE_SWARM_ID:-SWARM-DEV}
+      - HIVE_GITHUB_TOKENS=${HIVE_GITHUB_TOKENS:-}
+      - HIVE_DNS_DOMAIN=${HIVE_DNS_DOMAIN:-}
+      - HIVE_TELEGRAM_BOT_KEY=${HIVE_TELEGRAM_BOT_KEY:-}
+      - HIVE_TELEGRAM_CHAT_ID=${HIVE_TELEGRAM_CHAT_ID:-}
+      - HIVE_QUEEN_PASSWORD=${HIVE_QUEEN_PASSWORD:-dev_password}
+      - HIVE_QUEEN_SSH_PORT=2222
+      - HIVE_SOCKS5_PROXY=socks5://tor:9050
+      - HIVE_BRAIN_RECON=http://brain-1:11434/api/generate
+      - HIVE_BRAIN_EXPLOIT=http://brain-2:11435/api/generate
+      - HIVE_BRAIN_SOCIAL=http://brain-2:11436/api/generate
+      - HIVE_BRAIN_PIVOT=http://brain-3:11437/api/generate
+      - HIVE_BRAIN_REPORT=http://brain-1:11438/api/generate
+      - HIVE_HONEYCOMB_DIR=/data/honeycomb
+    volumes:
+      - hive_data:/data
+      - ./hive_ssh_key:/opt/hivemind/hive_ssh_key:ro
+      - ./hive_config.json:/opt/hivemind/hive_config.json:ro
+    networks:
+      - swarm_internal
+    depends_on:
+      tor:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2222"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    profiles:
+      - full
+      - core
+
+  # =========================================================================
+  # TOR PROXY — Луковая маршрутизация для Dead Drops
+  # =========================================================================
+  tor:
+    image: dperson/torproxy:latest
+    container_name: hivemind-tor
+    hostname: tor
+    restart: unless-stopped
+    environment:
+      - TZ=UTC
+    networks:
+      - swarm_internal
+    healthcheck:
+      test: ["CMD", "curl", "-s", "--socks5", "localhost:9050", "https://check.torproject.org/api/ip"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    profiles:
+      - full
+      - core
+
+  # =========================================================================
+  # BRAIN UNIT 1 — DeepSeek-R1 + Command R+
+  # =========================================================================
+  brain-1:
+    image: ollama/ollama:latest
+    container_name: brain-1
+    hostname: brain-1
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:11434:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+      - OLLAMA_ORIGINS=*
+      - OLLAMA_NUM_PARALLEL=2
+      - OLLAMA_MAX_LOADED_MODELS=3
+      - OLLAMA_KEEP_ALIVE=24h
+    volumes:
+      - brain1_data:/root/.ollama
+    networks:
+      - swarm_internal
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-s", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    profiles:
+      - full
+      - brains
+      - brain-1
+
+  # =========================================================================
+  # BRAIN UNIT 2 — Qwen 2.5 + Mistral Large
+  # =========================================================================
+  brain-2:
+    image: ollama/ollama:latest
+    container_name: brain-2
+    hostname: brain-2
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:11435:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+      - OLLAMA_ORIGINS=*
+      - OLLAMA_NUM_PARALLEL=2
+      - OLLAMA_MAX_LOADED_MODELS=3
+      - OLLAMA_KEEP_ALIVE=24h
+    volumes:
+      - brain2_data:/root/.ollama
+    networks:
+      - swarm_internal
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-s", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    profiles:
+      - full
+      - brains
+      - brain-2
+
+  # =========================================================================
+  # BRAIN UNIT 3 — Llama 4 Behemoth
+  # =========================================================================
+  brain-3:
+    image: ollama/ollama:latest
+    container_name: brain-3
+    hostname: brain-3
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:11437:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+      - OLLAMA_ORIGINS=*
+      - OLLAMA_NUM_PARALLEL=1
+      - OLLAMA_MAX_LOADED_MODELS=2
+      - OLLAMA_KEEP_ALIVE=24h
+    volumes:
+      - brain3_data:/root/.ollama
+    networks:
+      - swarm_internal
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-s", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    profiles:
+      - full
+      - brains
+      - brain-3
+
+  # =========================================================================
+  # DEAD DROP SERVER — Управление C2 каналами
+  # =========================================================================
+  dead-drop-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.deaddrop
+    container_name: dead-drop-server
+    hostname: dead-drop
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9999:9999"
+    environment:
+      - DD_ENCRYPTION_KEY=${HIVE_ENCRYPTION_KEY:-changeme_change_me_32_bytes_key}
+      - DD_SWARM_ID=${HIVE_SWARM_ID:-SWARM-DEV}
+      - DD_DB_PATH=/data/dead_drops.db
+      - DD_CONFIG_PATH=/config/dd_config.json
+      - DD_SYNC_INTERVAL=60
+    volumes:
+      - dd_data:/data
+      - ./dd_config.json:/config/dd_config.json:ro
+    networks:
+      - swarm_internal
+    depends_on:
+      tor:
+        condition: service_healthy
+    profiles:
+      - full
+      - deaddrops
+
+  # =========================================================================
+  # WORKER BEE — Тестовый агент
+  # =========================================================================
+  worker-bee-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.bee
+    container_name: worker-bee-test
+    hostname: bee-test
+    restart: "no"
+    environment:
+      - BEE_CONFIG=${BEE_CONFIG:-{"test_mode":true}}
+    volumes:
+      - bee_data:/data
+    networks:
+      - swarm_internal
+    depends_on:
+      - hivemind
+    profiles:
+      - test
+      - bee
+
+  # =========================================================================
+  # TEST RUNNER — Запуск батареи тестов
+  # =========================================================================
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: swarm-test-runner
+    hostname: test-runner
+    restart: "no"
+    environment:
+      - TEST_GIST_ID=${TEST_GIST_ID:-}
+      - TEST_GITHUB_TOKEN=${TEST_GITHUB_TOKEN:-}
+      - TEST_DNS_DOMAIN=${TEST_DNS_DOMAIN:-}
+      - TEST_TELEGRAM_BOT=${TEST_TELEGRAM_BOT:-}
+      - TEST_TELEGRAM_CHAT=${TEST_TELEGRAM_CHAT:-}
+    volumes:
+      - ./test_results:/results
+    networks:
+      - swarm_internal
+    depends_on:
+      hivemind:
+        condition: service_healthy
+    command: python3 test_swarm.py --json-output /results/test_report.json
+    profiles:
+      - test
+
+  # =========================================================================
+  # HONEYCOMB VIEWER — Просмотр результатов
+  # =========================================================================
+  honeycomb-viewer:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: honeycomb-viewer
+    hostname: honeycomb-viewer
+    restart: "no"
+    stdin_open: true
+    tty: true
+    volumes:
+      - hive_data:/data:ro
+    networks:
+      - swarm_internal
+    command: python3 honeycomb_viewer.py --db /data/honeycomb/honeycomb.db
+    profiles:
+      - tools
+      - viewer
+
+# ============================================================================
+# ТОМА
+# ============================================================================
+volumes:
+  hive_data:
+    driver: local
+  brain1_data:
+    driver: local
+  brain2_data:
+    driver: local
+  brain3_data:
+    driver: local
+  dd_data:
+    driver: local
+  bee_data:
+    driver: local
+
+# ============================================================================
+# СЕТИ
+# ============================================================================
+networks:
+  swarm_internal:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.99.0.0/24
